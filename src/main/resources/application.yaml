@@ -1,0 +1,14 @@
+telegram:
+  bot:
+    user:
+     name: Mr.HotDog
+     token: 6803912021:AAFgcYMCVlAYIgidYZfJugtdufvyypGnAPE
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5434/postgres
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+
