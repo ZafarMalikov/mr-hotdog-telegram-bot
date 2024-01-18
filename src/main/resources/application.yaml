@@ -5,10 +5,12 @@ telegram:
      token: 6803912021:AAFgcYMCVlAYIgidYZfJugtdufvyypGnAPE
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5434/postgres
+    url: jdbc:postgresql://localhost:5433/postgres
     username: postgres
-    password: postgres
+    password: 123
   jpa:
     hibernate:
       ddl-auto: update
+  main:
+    allow-bean-definition-overriding: true
 

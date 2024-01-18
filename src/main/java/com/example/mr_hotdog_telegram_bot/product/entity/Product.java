@@ -16,7 +16,6 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String name;
-    private String callbackDataName;
     private double prise;
     private String info;
     private int count;

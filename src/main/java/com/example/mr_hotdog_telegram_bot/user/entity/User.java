@@ -17,7 +17,6 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Table(name = "`user`")
-//@RedisHash(value = "user")
 public class User {
 
     @Id

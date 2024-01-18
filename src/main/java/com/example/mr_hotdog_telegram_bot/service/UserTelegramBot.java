@@ -1,6 +1,8 @@
 package com.example.mr_hotdog_telegram_bot.service;
 
 import com.example.mr_hotdog_telegram_bot.config.UserBotConfig;
+import com.example.mr_hotdog_telegram_bot.order.OrderRepository;
+import com.example.mr_hotdog_telegram_bot.order.entity.Order;
 import com.example.mr_hotdog_telegram_bot.product.ProductService;
 import com.example.mr_hotdog_telegram_bot.product.entity.Product;
 import com.example.mr_hotdog_telegram_bot.product.entity.ProductType;
@@ -32,21 +34,16 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class UserTelegramBot extends TelegramLongPollingBot {
-    //todo
-    //todo telegraphni yaxshilab yasash
-    //todo https://linktr.ee/mr_Hotdog shu urldagi malumotlarni tog'irlash
-    //todo locationi togirlash
-    //todo addcartda message chiqishi kere va uni sotib olish buyurtmalarim bolimidi bolishi kere
 
     private final UserBotConfig botConfig;
     private final ProductService productService;
     private final UserService userService;
     private final UserRepository userRepository;
-    private final List<Product> userProducts = new ArrayList<>();
-    private final HashMap<Long, List<Product>> userOrder = new HashMap<>();
 
-    private final String momChatId = "76676513";
-    private final String meChatId = "842230958";
+
+    private final OrderRepository userOrder;
+
+    private final String adminChatId = "842230958";
 
 
     @Override
@@ -162,7 +159,10 @@ public class UserTelegramBot extends TelegramLongPollingBot {
                 break;
             }
             case "deleteOrders" -> {
-                userProducts.clear();
+//                userProducts.clear();
+                Order order = userOrder.findById(chatId).orElseThrow();
+                List<Product> products = order.getProducts();
+                products.clear();
                 sendMessage = menu(chatId, update, data);
                 break;
             }
@@ -221,9 +221,12 @@ public class UserTelegramBot extends TelegramLongPollingBot {
 
     private void sendMessageToAdminTypeTakeAway(long userChatId) {
         SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(momChatId);
+        sendMessage.setChatId(adminChatId);
 
-        List<Product> products = userOrder.get(userChatId);
+//        List<Product> products = userOrder.get(userChatId);
+        Order order = userOrder.findById(userChatId).orElseThrow();
+        List<Product> products = order.getProducts();
+
         User user = userService.findByChatId(userChatId);
         double num = 0;
 
@@ -284,7 +287,10 @@ public class UserTelegramBot extends TelegramLongPollingBot {
         user.setPayType(PayType.PAY_CASH);
         userService.update(user, chatId);
 
-        List<Product> products = userOrder.get(chatId);
+//        List<Product> products = userOrder.get(chatId);
+        Order order = userOrder.findById(chatId).orElseThrow();
+        List<Product> products = order.getProducts();
+
         double num = 0;
         StringBuilder messageText = new StringBuilder();
         for (Product product : products) {
@@ -307,7 +313,11 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     private SendMessage payWithCart(long chatId, Update update) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
-        List<Product> products = userOrder.get(chatId);
+//        List<Product> products = userOrder.get(chatId);
+
+        Order order = userOrder.findById(chatId).orElseThrow();
+        List<Product> products = order.getProducts();
+
         double num = 0;
         StringBuilder messageText = new StringBuilder();
         for (Product product : products) {
@@ -349,17 +359,23 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     public SendMessage addCard(long chatId, String productId, Update update) {
         SendMessage sendMessage = new SendMessage();
         Optional<Product> byId = productService.findById(String.valueOf(productId));
+
         if (byId.isPresent()) {
             Product product = byId.get();
-            userProducts.add(product);
+        userOrder.save(new Order(chatId,List.of(product)));
+//            userProducts.add(product);
             sendMessage = getProductByType(chatId, product.getProductType(), update);
         }
-        userOrder.put(chatId, userProducts);
+//        userOrder.put(chatId, userProducts);
+//        List<Product> products = order.getProducts();
+//        userOrder.save(order);
         return sendMessage;
     }
 
 
     private SendMessage getProductByType(Long chatId, ProductType productType, Update update) {
+//        Order order = userOrder.findById(chatId).get();
+
         SendMessage sendMessage = new SendMessage();
 
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
@@ -388,10 +404,11 @@ public class UserTelegramBot extends TelegramLongPollingBot {
                     row.add(inline);
                 }
             }
-            if (!userProducts.isEmpty()) {
-                List<InlineKeyboardButton> cart = createInline("🛒 Savatcha", "userOrders");
-                row.add(cart);
-            }
+
+//            if (userOrder.findOrderByUserChatId(chatId).get().getProducts().isEmpty()) {
+//                List<InlineKeyboardButton> cart = createInline("🛒 Savatcha", "userOrders");
+//                row.add(cart);
+//            }
         }
 
 
@@ -497,7 +514,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     @SneakyThrows
     private SendMessage userOrders(Long chatId, Update update) {
         SendMessage sendMessage = new SendMessage();
-        List<Product> products = userOrder.get(chatId);
+        List<Product> products = userOrder.findById(chatId).get().getProducts();
         if (products == null) {
             sendMessage.setChatId(chatId);
             sendMessage.setText("Hamon buyurtma bermadingiz");
@@ -695,7 +712,8 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     private void userPictureSendToAdmin(List<PhotoSize> photos, long chatId) throws TelegramApiException {
         User user = userService.findByChatId(chatId);
         double num = 0;
-        List<Product> products = userOrder.get(chatId);
+
+        List<Product> products = userOrder.findById(chatId).orElseThrow().getProducts();
 
         StringBuilder messageText = new StringBuilder();
         if (!(products == null || products.isEmpty())) {
@@ -735,7 +753,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
             SendPhoto msg = new SendPhoto();
             InputFile inputFile = new InputFile(f_id);
 
-            msg.setChatId(momChatId);
+            msg.setChatId(adminChatId);
             msg.setPhoto(inputFile);
             msg.setCaption(messageText.toString());
 
