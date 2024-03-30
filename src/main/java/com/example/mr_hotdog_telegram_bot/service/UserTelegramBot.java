@@ -34,16 +34,24 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class UserTelegramBot extends TelegramLongPollingBot {
-
+    //todo
+    //todo telegraphni yaxshilab yasash
+    //todo https://linktr.ee/mr_Hotdog shu urldagi malumotlarni tog'irlash
+    //todo locationi togirlash
+    //todo addcartda message chiqishi kere va uni sotib olish buyurtmalarim bolimidi bolishi kere
+    //not work addCart faqat oxirgisi qowilvotti
+    //not work buyurtmalarni tozalash
     private final UserBotConfig botConfig;
     private final ProductService productService;
     private final UserService userService;
     private final UserRepository userRepository;
-
+//    private final List<Product> userProducts = new ArrayList<>();
+//    private final HashMap<Long, List<Product>> userOrder = new HashMap<>();
 
     private final OrderRepository userOrder;
 
-    private final String adminChatId = "842230958";
+    private final String momChatId = "76676513";
+    private final String meChatId = "842230958";
 
 
     @Override
@@ -58,7 +66,6 @@ public class UserTelegramBot extends TelegramLongPollingBot {
                         SendMessage start = sendPhoneNumber(chatId);
                         execute(start);
                     }
-
                 }
             }
             if (update.getMessage().hasPhoto()) {
@@ -221,7 +228,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
 
     private void sendMessageToAdminTypeTakeAway(long userChatId) {
         SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(adminChatId);
+        sendMessage.setChatId(meChatId);
 
 //        List<Product> products = userOrder.get(userChatId);
         Order order = userOrder.findById(userChatId).orElseThrow();
@@ -753,7 +760,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
             SendPhoto msg = new SendPhoto();
             InputFile inputFile = new InputFile(f_id);
 
-            msg.setChatId(adminChatId);
+            msg.setChatId(meChatId);
             msg.setPhoto(inputFile);
             msg.setCaption(messageText.toString());
 
