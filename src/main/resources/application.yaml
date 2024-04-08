@@ -5,9 +5,9 @@ telegram:
      token: 6803912021:AAFgcYMCVlAYIgidYZfJugtdufvyypGnAPE
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/postgres
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://dpg-co9rgfkf7o1s739do4ug-a.oregon-postgres.render.com:5432/postgress_0vet
+    username: postgress
+    password: xG8s0g3f2zWEZTO8IjnkkLYL8nIdarvC
   jpa:
     hibernate:
       ddl-auto: update
