@@ -1,13 +1,16 @@
 package com.example.mr_hotdog_telegram_bot.order;
 
 import com.example.mr_hotdog_telegram_bot.order.entity.Order;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import java.util.List;
 
 @Repository
-public interface OrderRepository extends CrudRepository<Order,Long> {
+public interface OrderRepository extends JpaRepository<Order, Integer> {
+    List<Order> findOrdersByUserChatId(Integer userChatId);
 
-    Optional<Order> findOrderByUserChatId(Long aLong);
+
+    void deleteAllOrderByUserChatId(Integer userChatId);
 }

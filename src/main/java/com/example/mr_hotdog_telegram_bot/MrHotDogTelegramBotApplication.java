@@ -8,7 +8,6 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 
 
 @SpringBootApplication
-@EnableRedisRepositories
 
 public class MrHotDogTelegramBotApplication {
 

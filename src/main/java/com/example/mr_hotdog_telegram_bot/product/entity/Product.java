@@ -1,5 +1,6 @@
 package com.example.mr_hotdog_telegram_bot.product.entity;
 
+import com.example.mr_hotdog_telegram_bot.user.entity.PayType;
 import com.example.mr_hotdog_telegram_bot.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -10,7 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 @NoArgsConstructor
-
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,13 +18,17 @@ public class Product {
     private String name;
     private double prise;
     private String info;
-    private int count;
     @Enumerated(EnumType.STRING)
     private ProductType productType;
+    private Boolean isHave;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+
+    private int count=1;
+//    @Enumerated(EnumType.STRING)
+//    private PayType payType;
+//    @ManyToOne
+//    @JoinColumn(name = "user_id")
+//    private User user;
 
 
 }

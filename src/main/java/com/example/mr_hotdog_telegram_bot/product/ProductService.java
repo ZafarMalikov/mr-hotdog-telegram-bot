@@ -17,7 +17,8 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     public List<Product> getAllByProductType(ProductType productType) {
-       return productRepository.findAll().stream().filter(product -> product.getProductType().equals(productType)).toList();
+       return productRepository.findAll().stream()
+               .filter(product -> product.getProductType().equals(productType)).toList();
     }
 
 

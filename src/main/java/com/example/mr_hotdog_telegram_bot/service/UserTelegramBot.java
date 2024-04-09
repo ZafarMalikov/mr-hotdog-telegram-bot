@@ -2,6 +2,7 @@ package com.example.mr_hotdog_telegram_bot.service;
 
 import com.example.mr_hotdog_telegram_bot.config.UserBotConfig;
 import com.example.mr_hotdog_telegram_bot.order.OrderRepository;
+import com.example.mr_hotdog_telegram_bot.order.OrderService;
 import com.example.mr_hotdog_telegram_bot.order.entity.Order;
 import com.example.mr_hotdog_telegram_bot.product.ProductService;
 import com.example.mr_hotdog_telegram_bot.product.entity.Product;
@@ -34,9 +35,6 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class UserTelegramBot extends TelegramLongPollingBot {
-    //todo
-    //todo telegraphni yaxshilab yasash
-    //todo https://linktr.ee/mr_Hotdog shu urldagi malumotlarni tog'irlash
     //todo locationi togirlash
     //todo addcartda message chiqishi kere va uni sotib olish buyurtmalarim bolimidi bolishi kere
     //not work addCart faqat oxirgisi qowilvotti
@@ -45,10 +43,9 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     private final ProductService productService;
     private final UserService userService;
     private final UserRepository userRepository;
-//    private final List<Product> userProducts = new ArrayList<>();
-//    private final HashMap<Long, List<Product>> userOrder = new HashMap<>();
 
     private final OrderRepository userOrder;
+    private final OrderService orderService;
 
     private final String momChatId = "76676513";
     private final String meChatId = "842230958";
@@ -78,7 +75,6 @@ public class UserTelegramBot extends TelegramLongPollingBot {
             if (update.getMessage().hasContact()) {
 
                 Contact contact = update.getMessage().getContact();
-
 
                 User user = User.builder()
                         .phoneNumber(contact.getPhoneNumber())
@@ -166,15 +162,12 @@ public class UserTelegramBot extends TelegramLongPollingBot {
                 break;
             }
             case "deleteOrders" -> {
-//                userProducts.clear();
-                Order order = userOrder.findById(chatId).orElseThrow();
-                List<Product> products = order.getProducts();
-                products.clear();
+                orderService.deleteUserOrders((int) chatId);
                 sendMessage = menu(chatId, update, data);
                 break;
             }
             case "predication" -> {
-                sendMessage = predication(chatId, update);
+                sendMessage =  predication(chatId, update);
                 break;
             }
             case "PAY_WITH_CART" -> {
@@ -182,7 +175,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
                 break;
             }
             case "PAY_CASH" -> {
-                sendMessage = payCash(chatId);
+                sendMessage = payCash(chatId,update);
                 break;
             }
             default -> {
@@ -195,13 +188,15 @@ public class UserTelegramBot extends TelegramLongPollingBot {
         return sendMessage;
     }
 
-    private void messageFromAdminToUser(String data, Long userId) {
+    private void messageFromAdminToUser(String data, long userId) {
         SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(userId.toString());
+        sendMessage.setChatId(userId);
         User user = userService.findByChatId(userId);
         if (user != null) {
             switch (data) {
                 case "begin" -> {
+
+                    orderService.deleteUserOrders((int) userId);
                     sendMessage.setText("Sizning Buyurtmangiz qabul qilindi");
                     break;
                 }
@@ -219,7 +214,6 @@ public class UserTelegramBot extends TelegramLongPollingBot {
             try {
                 execute(sendMessage);
             } catch (TelegramApiException e) {
-                // Exception ni logga yozish yoki yo'qotish
                 throw new RuntimeException("Telegram xatoligi", e);
             }
         }
@@ -230,18 +224,16 @@ public class UserTelegramBot extends TelegramLongPollingBot {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(meChatId);
 
-//        List<Product> products = userOrder.get(userChatId);
-        Order order = userOrder.findById(userChatId).orElseThrow();
-        List<Product> products = order.getProducts();
+        List<Order> order = orderService.findAllOrder((int) userChatId);
 
         User user = userService.findByChatId(userChatId);
         double num = 0;
 
         StringBuilder messageText = new StringBuilder();
-        if (!(products == null || products.isEmpty()) &&
+        if (!(order == null || order.isEmpty()) &&
                 user.getOrderType().equals("take_away")) {
 
-            for (Product product : products) {
+            for (Order product : order) {
                 num += product.getPrise() * product.getCount();
                 messageText.append("Userni telefon raqami:")
                         .append(user.getPhoneNumber())
@@ -286,7 +278,8 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     }
 
 
-    public SendMessage payCash(Long chatId) {
+    public SendMessage payCash(long chatId, Update update) {
+        deletePreviousMessage(update);
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
 
@@ -294,22 +287,24 @@ public class UserTelegramBot extends TelegramLongPollingBot {
         user.setPayType(PayType.PAY_CASH);
         userService.update(user, chatId);
 
-//        List<Product> products = userOrder.get(chatId);
-        Order order = userOrder.findById(chatId).orElseThrow();
-        List<Product> products = order.getProducts();
+
+        List<Order> orders = orderService.findAllOrder((int) chatId);
 
         double num = 0;
         StringBuilder messageText = new StringBuilder();
-        for (Product product : products) {
-            num += product.getPrise() * product.getCount();
+        for (Order order : orders) {
+
+            orderService.updatePayType(chatId,PayType.PAY_CASH);
+            num += order.getPrise() * order.getCount();
             messageText.append("Sizning Buyurtmangiz ")
-                    .append(product.getName())
+                    .append(order.getName())
                     .append(" ")
-                    .append(product.getCount())
+                    .append(order.getCount())
                     .append(" ta")
                     .append("\n\n");
 
         }
+
         messageText.append("Umumiy summa:").append(num);
         messageText.append("\n\n Siz naxt pul to'lashni tanladingiz siz bilan bo'glanamiz");
         sendMessageToAdminTypeTakeAway(chatId);
@@ -318,21 +313,21 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     }
 
     private SendMessage payWithCart(long chatId, Update update) {
+        deletePreviousMessage(update);
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
-//        List<Product> products = userOrder.get(chatId);
 
-        Order order = userOrder.findById(chatId).orElseThrow();
-        List<Product> products = order.getProducts();
+        List<Order> orders = orderService.findAllOrder((int) chatId);
 
         double num = 0;
         StringBuilder messageText = new StringBuilder();
-        for (Product product : products) {
-            num += product.getPrise() * product.getCount();
-            messageText.append("Sizning Buyurtmangiz ")
-                    .append(product.getName())
+        messageText.append("Sizning Buyurtmangiz ");
+        for (Order order : orders) {
+            orderService.updatePayType(chatId,PayType.PAY_WITH_CART);
+            num += order.getPrise() * order.getCount();
+            messageText.append(order.getName())
                     .append(" ")
-                    .append(product.getCount())
+                    .append(order.getCount())
                     .append(" ta")
                     .append("\n\n");
 
@@ -369,13 +364,23 @@ public class UserTelegramBot extends TelegramLongPollingBot {
 
         if (byId.isPresent()) {
             Product product = byId.get();
-        userOrder.save(new Order(chatId,List.of(product)));
-//            userProducts.add(product);
-            sendMessage = getProductByType(chatId, product.getProductType(), update);
+            if (!product.getIsHave()){
+                sendMessage.setText("bu maxsulot vaxtinchalik mavjud emas");
+                return sendMessage;
+            }
+            orderService.addOrder(Order.builder()
+                            .prise(product.getPrise())
+                            .info(product.getInfo())
+                            .count(product.getCount())
+                            .name(product.getName())
+                            .userChatId((int) chatId)
+                            .productType(product.getProductType())
+                    .build());
+
+//            sendMessage = getProductByType(chatId, product.getProductType(), update);
+            sendMessage=allProduct(chatId,update);
         }
-//        userOrder.put(chatId, userProducts);
-//        List<Product> products = order.getProducts();
-//        userOrder.save(order);
+
         return sendMessage;
     }
 
@@ -430,22 +435,26 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     }
 
     private SendMessage plusMinusOrder(String productId, Long chatId, Update update, String data) {
-        deletePreviousMessage(update);
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
-//        Contact contact = updateOrderType.getCallbackQuery().getMessage().getContact();
+        Product product = productService.findById(productId).get();
+
+        if (!product.getIsHave()){
+            sendMessage.setText("bu maxsulotimiz vaqtinchalik mavjud emas");
+                return sendMessage;
+        }
+
         int count = 1;
         try {
             if (data.equals("+")) {
-                Product product = productService.findById(productId).get();
+                deletePreviousMessage(update);
                 count = product.getCount();
                 product.setCount(count + 1);
                 count = product.getCount();
                 productService.updateProductCount(count, Integer.valueOf(productId));
             } else if (data.equals("-")) {
 
-                Product product = productService.findById(productId).get();
                 count = product.getCount();
                 product.setCount(count - 1);
                 count = product.getCount();
@@ -461,19 +470,19 @@ public class UserTelegramBot extends TelegramLongPollingBot {
 
             Optional<Product> optionalProduct = productService.findById(productId);
             if (optionalProduct.isPresent()) {
-                Product product = optionalProduct.get();
-                sendMessage.setText("Name: " + product.getName() + "\nNarxi: " + product.getPrise() + " so'm" + "\nTavsif: " + product.getInfo());
+                Product products = optionalProduct.get();
+                sendMessage.setText("Name: " + products.getName() + "\nNarxi: " + products.getPrise() + " so'm" + "\nTavsif: " + products.getInfo());
 
                 InlineKeyboardButton plus = new InlineKeyboardButton("+");
-                plus.setCallbackData(product.getId() + ":+");
+                plus.setCallbackData(products.getId() + ":+");
 
                 InlineKeyboardButton minus = new InlineKeyboardButton("-");
-                minus.setCallbackData(product.getId() + ":-");
+                minus.setCallbackData(products.getId() + ":-");
 
                 InlineKeyboardButton keyboardButton = new InlineKeyboardButton(String.valueOf(count));
                 keyboardButton.setCallbackData("counter");
 
-                List<InlineKeyboardButton> inline = createInline("🛒 Savatga qo'shish", "addCard:" + product.getId());
+                List<InlineKeyboardButton> inline = createInline("🛒 Savatga qo'shish", "addCard:" + products.getId());
 
                 List<InlineKeyboardButton> backToProductType = createInline("⬅️ Ortga", "backToProductType:" + product.getId());
 
@@ -519,12 +528,15 @@ public class UserTelegramBot extends TelegramLongPollingBot {
     }
 
     @SneakyThrows
-    private SendMessage userOrders(Long chatId, Update update) {
+    private SendMessage userOrders(long chatId, Update update) {
         SendMessage sendMessage = new SendMessage();
-        List<Product> products = userOrder.findById(chatId).get().getProducts();
-        if (products == null) {
+//        List<Product> products = userOrder.findById(chatId).get().getProducts();
+        List<Order> orders = orderService.findAllOrder((int) chatId);
+
+        if (orders.isEmpty()) {
             sendMessage.setChatId(chatId);
             sendMessage.setText("Hamon buyurtma bermadingiz");
+            return sendMessage;
         } else {
             deletePreviousMessage(update);
             double num = 0;
@@ -533,12 +545,12 @@ public class UserTelegramBot extends TelegramLongPollingBot {
             List<InlineKeyboardButton> inline1 = createInline("🗑️ Savatni bo'shatish", "deleteOrders");
             InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
             StringBuilder messageText = new StringBuilder("Savatchada:\n\n");
-            for (Product product : products) {
-                num += product.getPrise() * product.getCount();
+            for (Order order : orders) {
+                num += order.getPrise() * order.getCount();
                 messageText.append(" ")
-                        .append(product.getName())
+                        .append(order.getName())
                         .append(" ")
-                        .append(product.getCount())
+                        .append(order.getCount())
                         .append(" ta")
                         .append("\n\n");
 
@@ -607,6 +619,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
 
 
     private SendMessage menu(Long chatId, Update update, String data) {
+        deletePreviousMessage(update);
         WebAppInfo webAppInfo = new WebAppInfo();
         webAppInfo.setUrl("https://linktr.ee/mr_Hotdog");
 
@@ -720,24 +733,25 @@ public class UserTelegramBot extends TelegramLongPollingBot {
         User user = userService.findByChatId(chatId);
         double num = 0;
 
-        List<Product> products = userOrder.findById(chatId).orElseThrow().getProducts();
+        List<Order> orders = orderService.findAllOrder((int) chatId);
 
         StringBuilder messageText = new StringBuilder();
-        if (!(products == null || products.isEmpty())) {
-            for (Product product : products) {
-                num += product.getPrise() * product.getCount();
-                messageText.append("Userni telefon raqami:")
-                        .append(user.getPhoneNumber())
-                        .append("\n\nUser Buyurtmasi: ")
-                        .append(product.getName())
+        messageText.append("Userni telefon raqami:")
+                .append(user.getPhoneNumber())
+                .append("\n\nUser Buyurtmasi: ");
+        if (!(orders == null || orders.isEmpty())) {
+            for (Order order : orders) {
+                num += order.getPrise() * order.getCount();
+                messageText
+                        .append(order.getName())
                         .append(" ")
-                        .append(product.getCount())
+                        .append(order.getCount())
                         .append(" ta")
                         .append("\n\n");
 
             }
             messageText.append("Umumiy summa:").append(num)
-                    .append("\nTo'lov turi :")
+                    .append("\n\nTo'lov turi :")
                     .append("Carta orqali");
             if (user.getOrderType().equals("take_away")) {
                 messageText.append("\nuser o'zi kelib olib ketadi");
@@ -764,7 +778,7 @@ public class UserTelegramBot extends TelegramLongPollingBot {
             msg.setPhoto(inputFile);
             msg.setCaption(messageText.toString());
 
-            List<InlineKeyboardButton> inlineButtons = createInline("Tayyorlanvotti", "begin:" + chatId,
+            List<InlineKeyboardButton> inlineButtons = createInline("Qabul qilish", "begin:" + chatId,
                     "Tayor boldi", "end:" + chatId,
                     "buyurtma qabul qilinmadi", "error:" + chatId);
 

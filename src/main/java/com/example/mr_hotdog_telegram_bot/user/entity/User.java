@@ -36,8 +36,4 @@ public class User {
     @Enumerated(EnumType.STRING)
     private PayType payType;
 
-
-
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Product> products ;
 }
