@@ -22,6 +22,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
@@ -70,6 +71,9 @@ public class UserTelegramBot extends TelegramLongPollingBot {
                 sendMessage.setChatId(chatId);
                 sendMessage.setText("Buyurtmangiz qabul qilindi siz bilan bog'lanamiz");
                 userPictureSendToAdmin(update.getMessage().getPhoto(), chatId);
+
+            }
+            if (update.getMessage().hasLocation()){
 
             }
             if (update.getMessage().hasContact()) {
